@@ -1,0 +1,31 @@
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+}
+
+
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+.ant-modal-body{
+  padding: 6px !important;
+}
+.ant-card-body{
+  padding: 6px 24px !important;
+}
+.pageListClassName{
+  .ant-select{
+    width: 90%;
+  }
+}
+.pageListClassName{
+  .ant-select-selection-overflow {
+    flex-wrap: nowrap;
+}
+}

@@ -1,0 +1,111 @@
+apiVersion: apps/v1 #与k8s集群版本有关，使用 kubectl api-versions 即可查看当前集群支持的版本
+kind: Deployment
+metadata:
+    name: next-create-project
+    namespace: 'dev1'
+    labels:
+        app: next-create-project
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: next-create-project
+    template:
+        metadata:
+            labels:
+                app: next-create-project
+        spec:
+            containers:
+                - name: next-create-project
+                  image: harbor.dev.bm001.com/cicd-frontend/next-create-project:<imagetag>
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                      - containerPort: 3000
+                  env:
+                      - name: MY_NODE_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: spec.nodeName
+                      - name: MY_POD_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.name
+                      - name: MY_POD_NAMESPACE
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: metadata.namespace
+                      - name: MY_POD_IP
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: status.podIP
+                      - name: MY_POD_SERVICE_ACCOUNT
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: spec.serviceAccountName
+                  volumeMounts:
+                      - name: nextconfig
+                        mountPath: /app/.env.local
+                        subPath: .env.local
+                  resources:
+                      limits:
+                          cpu: 2000m
+                          memory: 4000Mi
+                      requests:
+                          cpu: 500m
+                          memory: 500Mi
+            imagePullSecrets:
+                - name: bm-harbor
+            volumes:
+                - name: nextconfig
+                  configMap:
+                      name: next-create-project-configmap
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: next-create-project-service #Service 的名称
+    namespace: 'dev1'
+    labels: #Service 自己的标签
+        app: next-create-project-service #为该 Service 设置 key 为 app，value 为 nginx 的标签
+spec: #这是关于该 Service 的定义，描述了 Service 如何选择 Pod，如何被访问
+    selector: #标签选择器
+        app: next-create-project #选择包含标签 app:nginx 的 Pod
+    ports:
+        - name: next-create-project-port #端口的名字
+          protocol: TCP #协议类型 TCP/UDP
+          port: 3000 #集群内的其他容器组可通过 80 端口访问 Service
+          #      nodePort: 32600 #通过任意节点的 32600 端口访问 Service，，，ingress访问的话，这里不用设置
+          targetPort: 3000 #将请求转发到匹配 Pod 的 80 端口，，，ingress访问的话，这里不用设置
+    type: NodePort #Serive的类型，ClusterIP/NodePort/LoaderBalancer，，，ingress访问的话，这里不用设置
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: next-create-project-ingress # Ingress 的名字，仅用于标识
+    namespace: 'dev1'
+    annotations:
+        kubernetes.io/ingress.class: nginx
+spec:
+    rules: # Ingress 中定义 L7 路由规则
+        - host: next-create-project-dev1.devp.bm001.com # 根据 virtual hostname 进行路由（请使用您自己的域名）
+          http:
+            paths:                  # 按路径进行路由
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: next-create-project-service # 指定后端的 Service 为之前创建的 nginx-service
+                  port:
+                    number: 3000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: next-create-project-configmap
+    namespace: 'dev1'
+data:
+    .env.local: |-
+      LDAP_HOST=ldap://10.20.0.15:389
+      LDAP_PASSOWRD=12345678bm
+      LDAP_ACCOUNT=cn=admin,dc=bm001,dc=com
