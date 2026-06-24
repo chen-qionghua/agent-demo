@@ -1,1 +1,0 @@
-export const ipHost ="https://cloudapitest.bm001.com/"
